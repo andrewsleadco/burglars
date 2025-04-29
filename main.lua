@@ -71,9 +71,10 @@ function love.update(dt)
         end
     end
 
-    -- Update camera to center on player
-    camera.x = player.x + player.width / 2 - love.graphics.getWidth() / 2
-    camera.y = player.y + player.height / 2 - love.graphics.getHeight() / 2
+    -- Update camera to center on player, removes subpixel shake during collision. 
+    camera.x = math.floor(player.x + player.width / 2 - love.graphics.getWidth() / 2)
+    camera.y = math.floor(player.y + player.height / 2 - love.graphics.getHeight() / 2)
+
 end
 
 function handleCollisions(axis)
