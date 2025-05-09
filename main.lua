@@ -100,9 +100,9 @@ function handleCollisions(axis)
                     player.vx = 0
                 elseif axis == "y" then
                     if player.vy > 0 then
-                        player.y = tileTop - player.height
+                        player.y = math.floor(tileTop - player.height + 0.5) -- snap to nearest pixel
                         player.vy = 0
-                        player.onGround = true
+                        player.onGround = true                    
                     elseif player.vy < 0 then
                         player.y = tileBottom
                         player.vy = 0
@@ -167,6 +167,9 @@ function love.mousepressed(x, y, button)
     end
 end
 
+-- Andrew's plane edits
+
+-- End of Andrew's Plane edits
 function spawnParticles(x, y)
     for i = 1, 8 do
         local p = {
