@@ -1,16 +1,16 @@
 -- main.lua
 local player = {}
 local tiles = {}
-local tileSize = 32
+local tileSize = 4
 local gravity = 800
-local destroyRange = 3 * tileSize
+local destroyRange = 20 * tileSize
 local particles = {}
-local camera = { x = 0, y = 0 } -- 🎥 Add a camera
+local camera = { x = 0, y = 0 }
+local fallingBlocks = {}
 
 function love.load()
-    -- Load player
     player.x = 100
-    player.y = 100
+    player.y = 50
     player.width = 20
     player.height = 40
     player.speed = 200
@@ -19,23 +19,47 @@ function love.load()
     player.vy = 0
     player.onGround = false
 
-    -- Generate a simple world
-    for y = 1, 25 do
+    local worldWidth = 400
+    local worldHeight = 200
+
+    for y = 1, worldHeight do
         tiles[y] = {}
-        for x = 1, 50 do
-            if y >= 22 then
-                tiles[y][x] = 2 -- Solid indestructible ground
-            elseif (y >= 15 and y <= 17) then
-                tiles[y][x] = 1 -- Destructible yellow blocks
+        for x = 1, worldWidth do
+            if y >= worldHeight - 3 then
+                tiles[y][x] = 2 -- indestructible
+            elseif (y >= worldHeight - 10 and y <= worldHeight - 8) then
+                tiles[y][x] = 1 -- destructible yellow
             else
-                tiles[y][x] = 0 -- Air
+                tiles[y][x] = 0
             end
         end
     end
+
+    -- Build a house for testing
+    local houseHeight = 10
+    local houseWidth = 20
+    local houseBottom = worldHeight - 4
+    local houseTop = houseBottom - houseHeight + 1
+    local houseLeft = math.floor(worldWidth / 2 - houseWidth / 2)
+
+    for y = houseTop, houseBottom do
+        for x = houseLeft, houseLeft + houseWidth - 1 do
+            local isWall = (x == houseLeft or x == houseLeft + houseWidth - 1)
+            local isRoof = (y == houseTop)
+            if isWall or isRoof then
+                tiles[y][x] = 1
+            end
+        end
+    end
+
+    -- Optional: spawn player in front of the house
+    player.x = (houseLeft + houseWidth / 2) * tileSize
+    player.y = (houseTop - 5) * tileSize
 end
 
+
 function love.update(dt)
-    -- Handle input
+    -- Player movement
     if love.keyboard.isDown("a") then
         player.vx = -player.speed
     elseif love.keyboard.isDown("d") then
@@ -44,16 +68,12 @@ function love.update(dt)
         player.vx = 0
     end
 
-    -- Jumping
     if love.keyboard.isDown("space") and player.onGround then
         player.vy = player.jumpForce
         player.onGround = false
     end
 
-    -- Apply gravity
     player.vy = player.vy + gravity * dt
-
-    -- Move and handle collisions
     player.x = player.x + player.vx * dt
     handleCollisions("x")
 
@@ -71,10 +91,26 @@ function love.update(dt)
         end
     end
 
-    -- Update camera to center on player, removes subpixel shake during collision. 
+    -- Update falling blocks
+    for i = #fallingBlocks, 1, -1 do
+        local b = fallingBlocks[i]
+        b.vy = b.vy + gravity * dt
+        b.y = b.y + b.vy * dt
+
+        local tileBelowY = math.floor((b.y + tileSize) / tileSize) + 1
+        local tileX = math.floor(b.x / tileSize) + 1
+
+        if tiles[tileBelowY] and tiles[tileBelowY][tileX] ~= 0 then
+            local snapY = math.floor(b.y / tileSize) + 1
+            local snapX = math.floor(b.x / tileSize) + 1
+            tiles[snapY][snapX] = b.tileType
+            table.remove(fallingBlocks, i)
+        end
+    end
+
+    -- Update camera
     camera.x = math.floor(player.x + player.width / 2 - love.graphics.getWidth() / 2)
     camera.y = math.floor(player.y + player.height / 2 - love.graphics.getHeight() / 2)
-
 end
 
 function handleCollisions(axis)
@@ -100,9 +136,9 @@ function handleCollisions(axis)
                     player.vx = 0
                 elseif axis == "y" then
                     if player.vy > 0 then
-                        player.y = math.floor(tileTop - player.height + 0.5) -- snap to nearest pixel
+                        player.y = math.floor(tileTop - player.height + 0.5)
                         player.vy = 0
-                        player.onGround = true                    
+                        player.onGround = true
                     elseif player.vy < 0 then
                         player.y = tileBottom
                         player.vy = 0
@@ -115,19 +151,25 @@ end
 
 function love.draw()
     love.graphics.push()
-    love.graphics.translate(-camera.x, -camera.y) -- 🎥 Shift everything
+    love.graphics.translate(-camera.x, -camera.y)
 
     -- Draw tiles
     for y = 1, #tiles do
         for x = 1, #tiles[y] do
             if tiles[y][x] == 1 then
-                love.graphics.setColor(1, 1, 0) -- Yellow destructible
-                love.graphics.rectangle("fill", (x-1)*tileSize, (y-1)*tileSize, tileSize, tileSize)
+                love.graphics.setColor(1, 1, 0)
+                love.graphics.rectangle("fill", (x - 1) * tileSize, (y - 1) * tileSize, tileSize, tileSize)
             elseif tiles[y][x] == 2 then
-                love.graphics.setColor(0.4, 0.4, 0.4) -- Gray indestructible
-                love.graphics.rectangle("fill", (x-1)*tileSize, (y-1)*tileSize, tileSize, tileSize)
+                love.graphics.setColor(0.4, 0.4, 0.4)
+                love.graphics.rectangle("fill", (x - 1) * tileSize, (y - 1) * tileSize, tileSize, tileSize)
             end
         end
+    end
+
+    -- Draw falling blocks
+    for _, b in ipairs(fallingBlocks) do
+        love.graphics.setColor(1, 1, 0)
+        love.graphics.rectangle("fill", b.x, b.y, tileSize, tileSize)
     end
 
     -- Draw player
@@ -144,7 +186,7 @@ function love.draw()
 end
 
 function love.mousepressed(x, y, button)
-    if button == 1 then -- Left click
+    if button == 1 then
         local worldX = x + camera.x
         local worldY = y + camera.y
 
@@ -152,24 +194,46 @@ function love.mousepressed(x, y, button)
         local tileY = math.floor(worldY / tileSize) + 1
 
         if tiles[tileY] and tiles[tileY][tileX] == 1 then
-            -- Calculate distance from player to tile center
             local tileCenterX = (tileX - 0.5) * tileSize
             local tileCenterY = (tileY - 0.5) * tileSize
             local dx = (player.x + player.width / 2) - tileCenterX
             local dy = (player.y + player.height / 2) - tileCenterY
-            local distance = math.sqrt(dx*dx + dy*dy)
+            local distance = math.sqrt(dx * dx + dy * dy)
 
             if distance <= destroyRange then
-                tiles[tileY][tileX] = 0 -- Destroy tile
+                tiles[tileY][tileX] = 0
                 spawnParticles(tileCenterX, tileCenterY)
+                checkFloatingCluster(tileX, tileY - 1)  -- above
+                checkFloatingCluster(tileX - 1, tileY)  -- left
+                checkFloatingCluster(tileX + 1, tileY)  -- right
             end
         end
     end
 end
 
--- Andrew's plane edits
+function checkFloatingCluster(x, y)
+    if not tiles[y] or not tiles[y][x] then return end
+    if tiles[y][x] ~= 1 then return end -- only destructible
 
--- End of Andrew's Plane edits
+    local below = tiles[y+1] and tiles[y+1][x]
+    if below and below ~= 0 then return end -- tile is supported
+
+    -- Convert to falling block
+    local block = {
+        x = (x - 1) * tileSize,
+        y = (y - 1) * tileSize,
+        vx = 0, vy = 0,
+        tileType = tiles[y][x]
+    }
+    table.insert(fallingBlocks, block)
+    tiles[y][x] = 0
+
+    -- Recursively check above/left/right
+    checkFloatingCluster(x, y - 1)
+    checkFloatingCluster(x - 1, y)
+    checkFloatingCluster(x + 1, y)
+end
+
 function spawnParticles(x, y)
     for i = 1, 8 do
         local p = {
