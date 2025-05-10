@@ -7,6 +7,7 @@ local destroyRange = 20 * tileSize
 local particles = {}
 local camera = { x = 0, y = 0 }
 local fallingBlocks = {}
+local burglarSprite
 
 function love.load()
     player.x = 100
@@ -19,6 +20,9 @@ function love.load()
     player.vy = 0
     player.onGround = false
     player.tool = "Hammer" 
+
+    -- Load burglar sprite
+    burglarSprite = love.graphics.newImage("assets/burglar_idle.png")
 
     local worldWidth = 400
     local worldHeight = 200
@@ -173,10 +177,10 @@ function love.draw()
         love.graphics.rectangle("fill", b.x, b.y, tileSize, tileSize)
     end
 
-    -- Draw player
-    love.graphics.setColor(1, 0, 0)
-    love.graphics.rectangle("fill", player.x, player.y, player.width, player.height)
-
+    -- Draw the player sprite
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.draw(burglarSprite, player.x, player.y)
+    
     -- Draw particles
     for _, p in ipairs(particles) do
         love.graphics.setColor(1, 1, 0, p.life / p.maxLife)
