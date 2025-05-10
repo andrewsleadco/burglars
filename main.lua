@@ -7,22 +7,39 @@ local destroyRange = 20 * tileSize
 local particles = {}
 local camera = { x = 0, y = 0 }
 local fallingBlocks = {}
-local burglarSprite
+--sprite stuff
+local burglarSprite = {}
+burglarSprite.idle = {}
+burglarSprite.run = {}
+
 
 function love.load()
-    player.x = 100
-    player.y = 50
-    player.width = 20
-    player.height = 40
-    player.speed = 200
-    player.jumpForce = -350
-    player.vx = 0
-    player.vy = 0
-    player.onGround = false
-    player.tool = "Hammer" 
+    player = {
+        x = 100,
+        y = 50,
+        width = 20,
+        height = 40,
+        speed = 200,
+        jumpForce = -350,
+        vx = 0,
+        vy = 0,
+        onGround = false,
+        tool = "Hammer",
+        anim = {
+            state = "idle",
+            frame = 1,
+            timer = 0,
+            speed = 0.15,
+            flip = false
+        }
+    }
+    
 
-    -- Load burglar sprite
-    burglarSprite = love.graphics.newImage("assets/burglar_idle.png")
+    -- Load burglar sprites
+    burglarSprite.idle[1] = love.graphics.newImage("assets/burglar_idle.png")
+    burglarSprite.run[1] = love.graphics.newImage("assets/burglar_run_0.png")
+    burglarSprite.run[2] = love.graphics.newImage("assets/burglar_run_1.png")
+    
 
     local worldWidth = 400
     local worldHeight = 200
@@ -64,6 +81,22 @@ end
 
 
 function love.update(dt)
+    -- Determine animation state
+if player.vx ~= 0 then
+    player.anim.state = "run"
+    player.anim.flip = player.vx < 0
+else
+    player.anim.state = "idle"
+end
+
+-- Animate frames
+local frames = burglarSprite[player.anim.state]
+player.anim.timer = player.anim.timer + dt
+if player.anim.timer >= player.anim.speed then
+    player.anim.timer = 0
+    player.anim.frame = player.anim.frame % #frames + 1
+end
+
     -- Player movement
     if love.keyboard.isDown("a") then
         player.vx = -player.speed
@@ -178,8 +211,15 @@ function love.draw()
     end
 
     -- Draw the player sprite
+    local frames = burglarSprite[player.anim.state]
+    local sprite = frames[player.anim.frame] or frames[1]
+    
+    local scaleX = player.anim.flip and -1 or 1
+    local offsetX = player.anim.flip and sprite:getWidth() or 0
+    
     love.graphics.setColor(1, 1, 1)
-    love.graphics.draw(burglarSprite, player.x, player.y)
+    love.graphics.draw(sprite, player.x + offsetX, player.y, 0, scaleX, 1)
+    
     
     -- Draw particles
     for _, p in ipairs(particles) do
