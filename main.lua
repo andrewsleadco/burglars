@@ -18,6 +18,7 @@ function love.load()
     player.vx = 0
     player.vy = 0
     player.onGround = false
+    player.tool = "Hammer" 
 
     local worldWidth = 400
     local worldHeight = 200
@@ -183,6 +184,10 @@ function love.draw()
     end
 
     love.graphics.pop()
+
+    -- Draw current tool name on HUD
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print("Tool: " .. player.tool, 10, 10)
 end
 
 function love.mousepressed(x, y, button)
@@ -201,11 +206,13 @@ function love.mousepressed(x, y, button)
             local distance = math.sqrt(dx * dx + dy * dy)
 
             if distance <= destroyRange then
+                if player.tool == "Hammer" then
                 tiles[tileY][tileX] = 0
                 spawnParticles(tileCenterX, tileCenterY)
                 checkFloatingCluster(tileX, tileY - 1)  -- above
                 checkFloatingCluster(tileX - 1, tileY)  -- left
                 checkFloatingCluster(tileX + 1, tileY)  -- right
+                end
             end
         end
     end
